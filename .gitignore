@@ -1,0 +1,3 @@
+*.nel
+cmake-build-debug/
+CMakeLists.txt
