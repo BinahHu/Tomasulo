@@ -21,7 +21,6 @@ struct StationItem{
     int addr;
     int remaincycle;
     StatusRecord* jumpstatus;
-    int jumphis;
 
     StationItem() {
         busy = false;
@@ -37,7 +36,6 @@ struct StationItem{
         id = 0;
         type = ADDER;
         jumpstatus = NULL;
-        jumphis = 0;
     }
 
     string getCompName();

@@ -14,11 +14,13 @@ struct Instruction{
     Var vk;
     int id;
     int boardid;
+    int jumphis;
 
     Instruction() {
         type = UNDEF;
         id = -1;
         boardid = -1;
+        jumphis = 0;
     }
     static void showTitle();
     void show();

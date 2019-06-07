@@ -137,7 +137,7 @@ bool Issue(int id) {
     }
     if(insts[id].type == JUMP) {
 		int inst1, inst2;
-		if(s.jumphis / 2 == 0) {    //Predict failed
+		if(insts[s.instid].jumphis / 2 == 0) {    //Predict failed
             inst1 = inst2issue + s.vk - 1;
             inst2 = inst2issue;
 		}
@@ -165,8 +165,8 @@ int Writeback(int id) {
         cout << "Station " << id << " Write back" << endl;
     s.exec();
     if(insts[s.instid].type == JUMP) {
-        bool restore1 = (s.dest != s.vj && s.jumphis / 2 != 0); //Predict success but actually failed
-        bool restore2 = (s.dest == s.vj && s.jumphis / 2 == 0); //Predict failed but acutally success
+        bool restore1 = (s.dest != s.vj && insts[s.instid].jumphis / 2 != 0); //Predict success but actually failed
+        bool restore2 = (s.dest == s.vj && insts[s.instid].jumphis / 2 == 0); //Predict failed but acutally success
         if(restore1 || restore2) {    //Need to recover
             int boardid = insts[s.instid].boardid;
             int iTime = board[boardid].IssueTime;
@@ -178,16 +178,16 @@ int Writeback(int id) {
             ret = RESTORE;
 
             //Update jump history
-            if(s.jumphis / 2 == 0)
-                s.jumphis = s.jumphis * 2 + 1;
+            if(insts[s.instid].jumphis / 2 == 0)
+                insts[s.instid].jumphis = insts[s.instid].jumphis * 2 + 1;
             else
-                s.jumphis = (s.jumphis) * 2 % 4;
+                insts[s.instid].jumphis = (insts[s.instid].jumphis) * 2 % 4;
         } else {
             //removeStatus(s.jumpstatus);
-            if(s.jumphis / 2 == 0)
-                s.jumphis = 0;
+            if(insts[s.instid].jumphis / 2 == 0)
+                insts[s.instid].jumphis = 0;
             else
-                s.jumphis = 3;
+                insts[s.instid].jumphis = 3;
         }
     }
     else {
