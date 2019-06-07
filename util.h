@@ -22,7 +22,6 @@ extern int AdderCompNum;
 extern int MultCompNum;
 extern int LoadCompNum;
 
-extern bool blockbyjmp;
 extern int cycle;
 extern int inst2issue;
 
@@ -38,6 +37,7 @@ struct UserInst{
     int disp;
     int n;
 };
+struct StatusRecord;
 //type:
 //0: skip
 //1: one step
@@ -69,8 +69,11 @@ bool getComp(int id);
 void releaseComp(int id);
 void updateBoard(int instid, int status, int val);
 
-void saveStatus();
-void restoreStatus();
-void popStatus();
+StatusRecord* saveStatus(int inst);
+void restoreStatus(StatusRecord* jumpstatus);
+void removeStatus(StatusRecord* jumpstatus);
+void saveAll();
+void restoreAll(int id);
+void removeAll(StatusRecord* hd);
 
 #endif //EXPERIMENT2_UTIL_H

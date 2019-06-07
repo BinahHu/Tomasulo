@@ -63,8 +63,11 @@ const int LSE = 12;
 
 const int MSTA = 12;
 
-const bool debugflag = true;
+const bool debugflag = false;
 const bool hexflag = false;
+
+#define OK 0
+#define RESTORE 1
 
 
 

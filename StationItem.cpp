@@ -6,7 +6,7 @@
 #include "util.h"
 
 void StationItem::showTitle() {
-    cout << "Comp\tBusy\tOp\tVj\tVk\tQj\tQk\tAddr" << endl;
+    cout << "Comp\tBusy\tOp\tVj\tVk\tQj\tQk\tAddr\tstatus\tremaincycle" << endl;
 }
 
 string StationItem::getCompName() {
@@ -50,6 +50,8 @@ void StationItem::show() {
     if(type == LOADER)
         cout << this->addr;
     cout << '\t';
+    cout << STATIONSTATUSNAME[status] << '\t';
+    cout << remaincycle << '\t';
 }
 
 bool StationItem::ready() {

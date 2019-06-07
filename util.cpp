@@ -12,15 +12,18 @@ int AdderCompNum = MAC;
 int MultCompNum = MMC;
 int LoadCompNum = MLC;
 
-bool blockbyjmp = false;
 int cycle = 0;
 int inst2issue = 0;
+int savepointid = 0;
 
 //const int INSTTIME[INSTTYPENUM] = {3, 1, 3, 3, 12, 40};
 const int INSTTIME[INSTTYPENUM] = {3, 1, 3, 3, 4, 4};
 const char* INSTYPENAME[INSTTYPENUM+1] = {"LD", "JUMP", "ADD", "SUB", "MUL", "DIV", "UNDEF"};
 const char* VARTYPENUM[3] = {"REG", "INT", "EMPTY"};
 const char* STATIONSTATUSNAME[4] = {"WAITTING", "RUNNING", "READY", "OVER"};
+
+StatusRecord* head = NULL;
+vector<StatusRecord*> savepoint;
 
 struct StatusRecord{
     vector<Instruction> Sinsts;
@@ -29,35 +32,93 @@ struct StatusRecord{
     vector<RegItem> Sregs;
     int Scycle;
     int Sinst2issue;
+    int SAdderCompNum;
+    int SMultCompNum;
+    int SLoadCompNum;
+	int Ssavepointid;
+    StatusRecord* prev;
+    StatusRecord* next;
 
-    void save() {
+    void copyfrom(StatusRecord* s) {
+        memcpy((void*)this, (void*)s, sizeof(StatusRecord));
+
+        Sinsts.resize(s->Sinsts.size());
+        for(int i = 0; i < s->Sinsts.size(); i++)
+            memcpy((void*)(&Sinsts[i]), (void*)(&s->Sinsts[i]), sizeof(Instruction));
+
+        Sboard.resize(s->Sboard.size());
+        for(int i = 0; i < s->Sboard.size(); i++)
+            memcpy((void*)(&Sboard[i]), (void*)(&s->Sboard[i]), sizeof(struct BoardItem));
+
+        Sstation.resize(s->Sstation.size());
+        for(int i = 0; i < s->Sstation.size(); i++)
+            memcpy((void*)(&Sstation[i]), (void*)(&s->Sstation[i]), sizeof(struct StationItem));
+
+        Sregs.resize(s->Sregs.size());
+        for(int i = 0; i < s->Sregs.size(); i++)
+            memcpy((void*)(&Sregs[i]), (void*)(&s->Sregs[i]), sizeof(struct RegItem));
+    }
+
+    void save(int inst) {
         Sinsts.resize(insts.size());
-        memcpy((void*)(&Sinsts), (void*)(&insts), sizeof(struct Instruction) * insts.size());
+        for(int i = 0; i < insts.size(); i++)
+            memcpy((void*)(&Sinsts[i]), (void*)(&insts[i]), sizeof(Instruction));
 
         Sboard.resize(board.size());
-        memcpy((void*)(&Sboard), (void*)(&board), sizeof(struct BoardItem) * board.size());
+        for(int i = 0; i < board.size(); i++)
+            memcpy((void*)(&Sboard[i]), (void*)(&board[i]), sizeof(struct BoardItem));
 
         Sstation.resize(station.size());
-        memcpy((void*)(&Sstation), (void*)(&station), sizeof(struct StationItem) * station.size());
+        for(int i = 0; i < station.size(); i++)
+            memcpy((void*)(&Sstation[i]), (void*)(&station[i]), sizeof(struct StationItem));
 
         Sregs.resize(regs.size());
-        memcpy((void*)(&Sregs), (void*)(&regs), sizeof(struct RegItem) * regs.size());
+        for(int i = 0; i < regs.size(); i++)
+            memcpy((void*)(&Sregs[i]), (void*)(&regs[i]), sizeof(struct RegItem));
 
         Scycle = cycle;
-        Sinst2issue = inst2issue;
+        Sinst2issue = inst;
+        SAdderCompNum = AdderCompNum;
+        SMultCompNum = MultCompNum;
+        SLoadCompNum = LoadCompNum;
+		Ssavepointid = savepointid;
     }
     void restore() {
         insts.resize(Sinsts.size());
-        memcpy((void*)(&insts), (void*)(&Sinsts), sizeof(struct Instruction) * Sinsts.size());
+        for(int i = 0; i < Sinsts.size(); i++)
+            memcpy((void*)(&insts[i]), (void*)(&Sinsts[i]), sizeof(struct Instruction));
 
         board.resize(Sboard.size());
-        memcpy((void*)(&board), (void*)(&Sboard), sizeof(struct BoardItem) * Sboard.size());
+        for(int i = 0; i < Sboard.size(); i++)
+            memcpy((void*)(&board[i]), (void*)(&Sboard[i]), sizeof(struct BoardItem));
 
         station.resize(Sstation.size());
-        memcpy((void*)(&station), (void*)(&Sstation), sizeof(struct StationItem) * Sstation.size());
+        for(int i = 0; i < Sstation.size(); i++)
+            memcpy((void*)(&station[i]), (void*)(&Sstation[i]), sizeof(struct StationItem));
 
         regs.resize(Sregs.size());
-        memcpy((void*)(&regs), (void*)(&Sregs), sizeof(struct RegItem) * Sregs.size());
+        for(int i = 0; i < Sregs.size(); i++)
+            memcpy((void*)(&regs[i]), (void*)(&Sregs[i]), sizeof(struct RegItem));
+
+        inst2issue = Sinst2issue;
+        AdderCompNum = SAdderCompNum;
+        MultCompNum = SMultCompNum;
+        LoadCompNum = SLoadCompNum;
+		savepointid = Ssavepointid;
+    }
+
+    void remove() {
+        StatusRecord* pre = prev;
+        StatusRecord* net = next;
+        prev->next = net;
+        net->prev = pre;
+    }
+
+    void insert(StatusRecord* pre, StatusRecord* net) {
+        pre->next = this;
+        net->prev = this;
+        this->next = net;
+        this->prev = pre;
     }
 
     ~StatusRecord() {
@@ -67,8 +128,6 @@ struct StatusRecord{
         Sregs.clear();
     }
 };
-
-vector<StatusRecord*> status;
 
 void displayAll() {
     displayBoard();
@@ -332,24 +391,109 @@ void updateBoard(int instid, int status, int val) {
     insts[instid].boardid = boardid;
 }
 
-void saveStatus() {
+void showlink()
+{
+    StatusRecord* p = head;
+    cout << "Show Link" << endl;
+    do{
+        cout << p << endl;
+        if(p == NULL)
+            break;
+        p = p->next;
+    }while(p != head);
+}
+
+StatusRecord* saveStatus(int inst) {
+    cout << "Save status at cycle " << cycle << endl;
+    cout << "instid = " << inst << endl;
+    showlink();
+    //displayAll();
     StatusRecord* s = new StatusRecord();
-    s->save();
-    status.push_back(s);
-}
-
-void restoreStatus() {
-    StatusRecord* s = status[status.size() - 1];
-    status.pop_back();
-    if(s) {
-        s->restore();
-        delete s;
+    s->save(inst);
+    if(head == NULL) {
+        head = s;
+        s->insert(head, head);
     }
+    else
+        s->insert(head->prev, head);
+    showlink();
+    saveAll();
+    return s;
 }
 
-void popStatus() {
-    StatusRecord* s = status[status.size() - 1];
-    status.pop_back();
-    if(s)
-        delete s;
+void restoreStatus(StatusRecord* jumpstatus) {
+    cout << "Restore status at cycle " << cycle << endl;
+    cout << "Before, inst = " << inst2issue << endl;
+    showlink();
+    restoreAll(jumpstatus->Ssavepointid);
+    //displayAll();
+    StatusRecord* savehead = head;
+    StatusRecord* prev = jumpstatus->prev;
+    prev->next = head;
+    head->prev = prev;
+    jumpstatus->restore();
+    cout << "After, inst = " << inst2issue << endl;
+    //displayAll();
+    if(jumpstatus == head)
+        head = NULL;
+    StatusRecord* p = jumpstatus;
+    StatusRecord* q = jumpstatus->next;
+    while(q != savehead) {
+        cout << "in restore, p = " << p << endl;
+        delete p;
+        cout << 66666666666666666 << endl;
+        p = q;
+        q = q->next;
+    }
+    showlink();
+}
+
+void removeStatus(StatusRecord* jumpstatus) {
+    cout << "Remove status at cycle " << cycle << endl;
+    cout << "instid = " << inst2issue << endl;
+    showlink();
+    //displayAll();
+    if(jumpstatus == head){
+        if(jumpstatus->next == head)
+            head = NULL;
+        else
+            head = jumpstatus->next;
+    }
+    jumpstatus->remove();
+    cout << jumpstatus << endl;
+    delete jumpstatus;
+    cout << 666666666 << endl;
+    showlink();
+}
+
+void saveAll() {
+    StatusRecord* p = head;
+    StatusRecord* q;
+    StatusRecord* shead = NULL;
+    do{
+        q = new StatusRecord();
+        q->copyfrom(p);
+        if(shead == NULL)
+            shead = q;
+        p = p->next;
+    }while(p != head);
+    savepoint.push_back(head);
+    savepointid++;
+    head = shead;
+}
+
+void restoreAll(int id) {
+    StatusRecord* shead = savepoint[id];
+    removeAll(head);
+    head = shead;
+    savepointid++;
+    for(int i = id; i < savepoint.size(); i++)
+        removeAll(savepoint[i]);
+    savepoint.erase(savepoint.begin() + id, savepoint.end());
+}
+
+void removeAll(StatusRecord* hd) {
+    StatusRecord* p = hd;
+    StatusRecord* q = NULL;
+
 }

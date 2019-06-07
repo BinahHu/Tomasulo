@@ -6,6 +6,7 @@
 #define EXPERIMENT2_STATIONITEM_H
 #include "def.h"
 #include "Instruction.h"
+struct StatusRecord;
 struct StationItem{
     bool busy;
     STATIONSTATUS status;
@@ -19,6 +20,8 @@ struct StationItem{
     int qk;
     int addr;
     int remaincycle;
+    StatusRecord* jumpstatus;
+    int jumphis;
 
     StationItem() {
         busy = false;
@@ -33,6 +36,8 @@ struct StationItem{
         remaincycle = 0;
         id = 0;
         type = ADDER;
+        jumpstatus = NULL;
+        jumphis = 0;
     }
 
     string getCompName();

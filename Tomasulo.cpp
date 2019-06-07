@@ -136,7 +136,17 @@ bool Issue(int id) {
         s.addr = inst.vj.value;
     }
     if(insts[id].type == JUMP) {
-        blockbyjmp = true;
+		int inst1, inst2;
+		if(s.jumphis / 2 == 0) {    //Predict failed
+            inst1 = inst2issue + s.vk - 1;
+            inst2 = inst2issue;
+		}
+		else {  //Predict success
+		    inst1 = inst2issue;
+		    inst2 = inst2issue + s.vk - 1;
+		}
+		s.jumpstatus = saveStatus(inst1);
+        inst2issue = inst2;
     }
 
     updateBoard(id, 0, cycle);
@@ -148,16 +158,37 @@ bool Issue(int id) {
 
 }
 
-void Writeback(int id) {
+int Writeback(int id) {
+    int ret = OK;
     StationItem& s = station[id];
     if(debugflag)
         cout << "Station " << id << " Write back" << endl;
     s.exec();
     if(insts[s.instid].type == JUMP) {
-        if(s.dest == s.vj) {
-            inst2issue += s.vk - 1;
+        bool restore1 = (s.dest != s.vj && s.jumphis / 2 != 0); //Predict success but actually failed
+        bool restore2 = (s.dest == s.vj && s.jumphis / 2 == 0); //Predict failed but acutally success
+        if(restore1 || restore2) {    //Need to recover
+            int boardid = insts[s.instid].boardid;
+            int iTime = board[boardid].IssueTime;
+            int eTime = board[boardid].ExecCompTime;
+            restoreStatus(s.jumpstatus);
+            updateBoard(s.instid, 0, iTime);
+            updateBoard(s.instid, 1, eTime);
+            inst2issue++;
+            ret = RESTORE;
+
+            //Update jump history
+            if(s.jumphis / 2 == 0)
+                s.jumphis = s.jumphis * 2 + 1;
+            else
+                s.jumphis = (s.jumphis) * 2 % 4;
+        } else {
+            removeStatus(s.jumpstatus);
+            if(s.jumphis / 2 == 0)
+                s.jumphis = 0;
+            else
+                s.jumphis = 3;
         }
-        blockbyjmp = false;
     }
     else {
         for(int i = 0; i < regs.size(); i++) {
@@ -172,6 +203,7 @@ void Writeback(int id) {
     updateBoard(s.instid, 2, cycle);
 
     station[id].busy = false;
+    return ret;
 
 }
 void Exec(int index) {
@@ -189,20 +221,25 @@ void Exec(int index) {
 void tick() {
     cycle++;
     if(debugflag)
-        cout << "cycle " << cycle << endl;
+        cout << "cycle " << cycle << endl << endl;
+
+    bool restoreflag = false;
 
     //Pharse 1: Write back
     for(int i = 0; i < MSTA; i++) {
         StationItem& s = station[i];
         if(s.busy && s.status == OVER)
-            Writeback(i);
+            if(Writeback(i) == RESTORE) {
+                restoreflag = true;
+                break;
+            }
     }
 
     //Phrase 2: Issue
-    if(!blockbyjmp) {
-        if(Issue(inst2issue))
-            inst2issue++;
-    }
+    if(restoreflag)
+        restoreflag = false;
+    else if(Issue(inst2issue))
+        inst2issue++;
 
     //Phrase 3: Update exec status, check over
     for(int i = 0; i < MSTA; i++)
