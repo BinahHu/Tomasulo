@@ -1,3 +1,6 @@
 *.nel
 cmake-build-debug/
 CMakeLists.txt
+*.swp
+*.o
+tomasulo

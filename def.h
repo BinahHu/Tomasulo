@@ -47,8 +47,8 @@ enum STATIONTYPE {
 const int INSTTYPENUM = 6;
 
 
-//const int MREG = 32;
-const int MREG = 16;
+const int MREG = 32;
+//const int MREG = 16;
 
 const int MAC = 3;
 const int MMC = 2;
