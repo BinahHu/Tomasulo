@@ -35,7 +35,7 @@ struct StatusRecord{
     int SAdderCompNum;
     int SMultCompNum;
     int SLoadCompNum;
-	int Ssavepointid;
+	//int Ssavepointid;
     StatusRecord* prev;
     StatusRecord* next;
 
@@ -81,7 +81,7 @@ struct StatusRecord{
         SAdderCompNum = AdderCompNum;
         SMultCompNum = MultCompNum;
         SLoadCompNum = LoadCompNum;
-		Ssavepointid = savepointid;
+		//Ssavepointid = savepointid;
     }
     void restore() {
         insts.resize(Sinsts.size());
@@ -104,7 +104,7 @@ struct StatusRecord{
         AdderCompNum = SAdderCompNum;
         MultCompNum = SMultCompNum;
         LoadCompNum = SLoadCompNum;
-		savepointid = Ssavepointid;
+		//savepointid = Ssavepointid;
     }
 
     void remove() {
@@ -404,9 +404,9 @@ void showlink()
 }
 
 StatusRecord* saveStatus(int inst) {
-    cout << "Save status at cycle " << cycle << endl;
-    cout << "instid = " << inst << endl;
-    showlink();
+    if(debugflag)
+        cout << "Save status at cycle " << cycle << endl;
+    //showlink();
     //displayAll();
     StatusRecord* s = new StatusRecord();
     s->save(inst);
@@ -416,42 +416,39 @@ StatusRecord* saveStatus(int inst) {
     }
     else
         s->insert(head->prev, head);
-    showlink();
-    saveAll();
+    //showlink();
+    //saveAll();
     return s;
 }
 
 void restoreStatus(StatusRecord* jumpstatus) {
-    cout << "Restore status at cycle " << cycle << endl;
-    cout << "Before, inst = " << inst2issue << endl;
-    showlink();
-    restoreAll(jumpstatus->Ssavepointid);
+    if(debugflag)
+        cout << "Restore status at cycle " << cycle << endl;
+    //showlink();
+    //restoreAll(jumpstatus->Ssavepointid);
     //displayAll();
     StatusRecord* savehead = head;
     StatusRecord* prev = jumpstatus->prev;
     prev->next = head;
     head->prev = prev;
     jumpstatus->restore();
-    cout << "After, inst = " << inst2issue << endl;
     //displayAll();
     if(jumpstatus == head)
         head = NULL;
     StatusRecord* p = jumpstatus;
     StatusRecord* q = jumpstatus->next;
     while(q != savehead) {
-        cout << "in restore, p = " << p << endl;
         delete p;
-        cout << 66666666666666666 << endl;
         p = q;
         q = q->next;
     }
-    showlink();
+    //showlink();
 }
 
 void removeStatus(StatusRecord* jumpstatus) {
-    cout << "Remove status at cycle " << cycle << endl;
-    cout << "instid = " << inst2issue << endl;
-    showlink();
+    if(debugflag)
+        cout << "Remove status at cycle " << cycle << endl;
+    //showlink();
     //displayAll();
     if(jumpstatus == head){
         if(jumpstatus->next == head)
@@ -460,10 +457,8 @@ void removeStatus(StatusRecord* jumpstatus) {
             head = jumpstatus->next;
     }
     jumpstatus->remove();
-    cout << jumpstatus << endl;
     delete jumpstatus;
-    cout << 666666666 << endl;
-    showlink();
+    //showlink();
 }
 
 void saveAll() {

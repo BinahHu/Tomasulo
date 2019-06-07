@@ -183,7 +183,7 @@ int Writeback(int id) {
             else
                 s.jumphis = (s.jumphis) * 2 % 4;
         } else {
-            removeStatus(s.jumpstatus);
+            //removeStatus(s.jumpstatus);
             if(s.jumphis / 2 == 0)
                 s.jumphis = 0;
             else
